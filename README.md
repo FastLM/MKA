@@ -1,6 +1,6 @@
-# MKA Code Folder
+# MKA Implementation
 
-This ropo contains code implemnentation of our paper MKA:
+This ropo contains code implemnentation of our paper `MKA: Memory-Keyed Attention for Efficient Long-Context Reasoning `
 
 - `MKA` (3-path hierarchical memory attention)
 - `FastMKA` (route-fused variant for speed)
@@ -103,3 +103,12 @@ Use:
 - `scripts/run_longbench.sh` for LongBench workflow
 - `scripts/run_ruler.sh` for RULER workflow
 
+## cite
+```
+@inproceedings{mka2026,
+  title     = {MKA: Memory-Keyed Attention for Efficient Long-Context Reasoning},
+  author    = {Dong Liu and Yanxuan Yu and Ben Lengerich and Ying Nian Wu},
+  booktitle = {Proceedings of the ACM International Conference on Computing Frontiers (CF '26)},
+  year      = {2026}
+}
+```
