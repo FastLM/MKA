@@ -1,0 +1,7 @@
+tokenizer: Qwen/Qwen2.5-7B
+batch_size: 2
+seq_len: 4096
+hidden_size: 1024
+num_heads: 16
+lr: 1.0e-4
+max_steps: 100

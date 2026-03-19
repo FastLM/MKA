@@ -1,0 +1,15 @@
+model_name_or_path: meta-llama/Llama-3.1-8B
+batch_size: 1
+seq_len: 2048
+lr: 1.0e-5
+max_steps: 20
+bf16: true
+tp_size: 1
+
+mka_patch:
+  enabled: true
+  mode: fastmka
+  use_l3: false
+  ema_beta: 0.9
+  use_cuda_kernel: true
+  verbose: true
