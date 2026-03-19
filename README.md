@@ -38,7 +38,7 @@ python scripts/train_wikitext2.py --config configs/qwen7b_fastmka.yaml
    - Per-level attention over L1/L2/L3
    - Soft mixture over outputs
 
-3. **CUDA design (detailed skeleton)**:
+3. **CUDA design**:
    - Tiled QK score calculation
    - Online max/denominator (`m`, `z`) update
    - Fused route application before attention
