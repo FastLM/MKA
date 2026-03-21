@@ -54,7 +54,7 @@ python scripts/train_wikitext2.py --config configs/qwen7b_fastmka.yaml
 
 ## Usage
 
-### Build CUDA kernel
+1. Build CUDA kernel
 
 ```bash
 cd mka/cuda
@@ -65,19 +65,21 @@ cd ../..
 If build fails with `CUDA_HOME environment variable is not set`, export your CUDA path first, e.g.
 `export CUDA_HOME=/usr/local/cuda`.
 
-### Single GPU
+2. Execute on GPU(s)
+
+For Single GPU
 
 ```bash
 python scripts/train_hf_patch.py --config configs/hf_qwen_fastmka.yaml
 ```
 
-### Multi-GPU DP
+For Multi-GPU DP
 
 ```bash
 bash scripts/launch_dp_torchrun.sh configs/hf_qwen_fastmka.yaml 4
 ```
 
-### Multi-GPU TP+DP
+For Multi-GPU TP+DP
 
 1. Set `tp_size` in config (`>1`).
 2. Launch:
