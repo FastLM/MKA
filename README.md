@@ -2,20 +2,20 @@
 
 This ropo contains code implemnentation of our paper `MKA: Memory-Keyed Attention for Efficient Long-Context Reasoning `
 
+The main idea include:
 - `MKA` (3-path hierarchical memory attention)
 - `FastMKA` (route-fused variant for speed)
 - CUDA extension scaffolding for fused routing + online softmax
 - Reproducible training/evaluation scripts following the paper setup
 
-## Structure
-
+Our code repo include follwing:
 - `mka/layers/`: PyTorch modules (`MKAFullAttention`, `FastMKAAttention`)
 - `mka/hf/`: HuggingFace monkey patch support (Qwen/Llama style `self_attn`)
 - `mka/cuda/`: CUDA/C++ extension skeleton for fused kernels
 - `scripts/`: train/eval/benchmark entry points
 - `configs/`: experiment configs
 
-## Quick Start
+To get started, run following scripts
 
 ```bash
 cd code
@@ -25,7 +25,7 @@ pip install -r requirements.txt
 python scripts/train_wikitext2.py --config configs/qwen7b_fastmka.yaml
 ```
 
-## What Is Implemented
+## Features
 
 1. **FastMKA forward path** in PyTorch:
    - L1 local memory (`X`)
@@ -52,9 +52,9 @@ python scripts/train_wikitext2.py --config configs/qwen7b_fastmka.yaml
    - `scripts/launch_dp_torchrun.sh`: DP launch (torchrun)
    - `scripts/launch_tp_dp_accelerate.sh`: TP+DP launch path (accelerate + HF TP)
 
-## HuggingFace Patch Usage
+## Usage
 
-### Build CUDA kernel (recommended)
+### Build CUDA kernel
 
 ```bash
 cd mka/cuda
@@ -95,7 +95,7 @@ Notes:
   - `head_dim <= 256`,
   - no extra additive attention mask is required.
 
-## Benchmark Evaluation
+## Evaluation
 
 The paper reports LongBench and RULER.
 Use:
@@ -103,7 +103,7 @@ Use:
 - `scripts/run_longbench.sh` for LongBench workflow
 - `scripts/run_ruler.sh` for RULER workflow
 
-## cite
+## Cite
 ```
 @inproceedings{mka2026,
   title     = {MKA: Memory-Keyed Attention for Efficient Long-Context Reasoning},
