@@ -54,7 +54,7 @@ python scripts/train_wikitext2.py --config configs/qwen7b_fastmka.yaml
 
 ## Usage
 
-1. Build CUDA kernel
+### 1. Build CUDA kernel
 
 ```bash
 cd mka/cuda
@@ -65,7 +65,7 @@ cd ../..
 If build fails with `CUDA_HOME environment variable is not set`, export your CUDA path first, e.g.
 `export CUDA_HOME=/usr/local/cuda`.
 
-2. Execute on GPU(s)
+### 2. Execute on GPU(s)
 
 2.1 For Single GPU
 
