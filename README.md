@@ -67,19 +67,19 @@ If build fails with `CUDA_HOME environment variable is not set`, export your CUD
 
 2. Execute on GPU(s)
 
-For Single GPU
+2.1 For Single GPU
 
 ```bash
 python scripts/train_hf_patch.py --config configs/hf_qwen_fastmka.yaml
 ```
 
-For Multi-GPU DP
+2.2 For Multi-GPU DP
 
 ```bash
 bash scripts/launch_dp_torchrun.sh configs/hf_qwen_fastmka.yaml 4
 ```
 
-For Multi-GPU TP+DP
+2.3 For Multi-GPU TP+DP
 
 1. Set `tp_size` in config (`>1`).
 2. Launch:
