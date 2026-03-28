@@ -7,7 +7,12 @@ from typing import Optional
 import torch
 import torch.nn as nn
 
-from mka.cuda.ops import fastmka_attn, has_fastmka_cuda
+from mka.cuda.ops import (
+    fastmka_attn,
+    fused_route_mka_attn,
+    has_fastmka_cuda,
+    has_fused_route_mka_cuda,
+)
 from .session_memory import causal_prefix_ema, repeat_retrieval_to_length
 
 
@@ -19,6 +24,8 @@ class FastMKAConfig:
     ema_beta: float = 0.9
     dropout_p: float = 0.0
     use_cuda_kernel: bool = True
+    # Fused route+KV+attention CUDA kernel (MHA only); requires no KV cache.
+    use_fused_route_cuda: bool = True
 
 
 class FastMKAAttention(nn.Module):
@@ -95,15 +102,41 @@ class FastMKAAttention(nn.Module):
         else:
             k_tot, v_tot = k_new, v_new
 
+        d_hidden = self.cfg.hidden_size
+        h, dh = self.cfg.num_heads, self.head_dim
+        l3_for_fused = levels[2] if len(levels) == 3 else torch.zeros_like(l1)
+
         scale = 1.0 / math.sqrt(self.head_dim)
+        dtype_ok = qh.dtype in (torch.float16, torch.bfloat16, torch.float32)
+        no_kv_cache = kv_cache_k is None and kv_cache_v is None
+        can_use_fused = (
+            self.cfg.use_cuda_kernel
+            and self.cfg.use_fused_route_cuda
+            and x.is_cuda
+            and no_kv_cache
+            and has_fused_route_mka_cuda()
+            and h * dh == d_hidden
+            and self.head_dim <= 256
+            and dtype_ok
+        )
         can_use_kernel = (
             self.cfg.use_cuda_kernel
             and x.is_cuda
             and has_fastmka_cuda()
             and self.head_dim <= 256
-            and qh.dtype in (torch.float16, torch.bfloat16, torch.float32)
+            and dtype_ok
         )
-        if can_use_kernel:
+        if can_use_fused:
+            out = fused_route_mka_attn(
+                qh,
+                l1,
+                l2,
+                l3_for_fused,
+                lam,
+                self.wk.weight,
+                self.wv.weight,
+            )
+        elif can_use_kernel:
             out = fastmka_attn(qh, k_tot, v_tot, causal=True)
         else:
             scores = torch.matmul(qh, k_tot.transpose(-1, -2)) * scale  # [B,H,T,Ttot]
