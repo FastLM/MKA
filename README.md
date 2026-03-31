@@ -5,20 +5,20 @@ This ropo contains code implemnentation of our paper `MKA: Memory-Keyed Attentio
 The main idea include:
 - `MKA` (3-path hierarchical memory attention)
 - `FastMKA` (route-fused variant for speed)
-- CUDA extension scaffolding for fused routing + online softmax
+- CUDA extensions for fused routing + online softmax
 - Reproducible training/evaluation scripts following the paper setup
 
 Our code repo include follwing:
 - `mka/layers/`: PyTorch modules (`MKAFullAttention`, `FastMKAAttention`)
 - `mka/hf/`: HuggingFace monkey patch support (Qwen/Llama style `self_attn`)
-- `mka/cuda/`: CUDA/C++ extension skeleton for fused kernels
+- `mka/cuda/`: CUDA extensions (`fastmka_attn`, optional `fused_route_mka`)
+- `mka/utils/repro.py`: global RNG seeding for reproducible runs
 - `scripts/`: train/eval/benchmark entry points
 - `configs/`: experiment configs
 
 To get started, run following scripts
 
 ```bash
-cd code
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -90,12 +90,19 @@ bash scripts/launch_tp_dp_accelerate.sh configs/hf_qwen_fastmka.yaml 4
 
 Notes:
 - TP relies on HuggingFace native `tp_plan="auto"` support for the model/version.
-- For strict reproducibility, pin `transformers` and CUDA versions used in your paper runs.
+- Dependencies are pinned in `requirements.txt`.
+- **Training throughput** (`train_throughput_tok_s`) is measured **after** `warmup_steps` (see YAML) and includes forward + backward + optimizer. **Inference** prefill/decode (forward-only) is reported by `scripts/bench_inference_metrics.py`.
 - FastMKA CUDA kernel is used automatically when:
   - extension `fastmka_cuda` is available,
   - tensor is CUDA,
   - `head_dim <= 256`,
   - no extra additive attention mask is required.
+
+### Metrics
+
+- YAML: `seed`, `warmup_steps` (exclude cold-start from timed throughput), optional `deterministic: true` (slower, stricter cudnn).
+- `train_hf_patch.py`: logs `train_mean_loss`, `train_total_elapsed_s`, `train_throughput_tok_s` (post-warmup), `peak_gpu_memory_gb`, optional `--eval-ppl` for validation PPL.
+- `bench_inference_metrics.py`: `prefill_tok_s`, `decode_tok_s`, per-phase peak GPU memory, `kv_cache_bytes_*` from `past_key_values`. HBM bandwidth is not available from PyTorch alone; use Nsight / `nvidia-smi dmon` on the host.
 
 ## Evaluation
 

@@ -138,12 +138,36 @@ class HFFastMKAAttention(nn.Module):
             attn_output = fastmka_attn(q_states, k_states, v_states, causal=True)
             attn_weights = None
         else:
-            attn_weights = torch.matmul(q_states, k_states.transpose(-1, -2)) / math.sqrt(self.head_dim)
-            if attention_mask is not None:
-                attn_weights = attn_weights + attention_mask
-            attn_weights = F.softmax(attn_weights, dim=-1, dtype=torch.float32).to(q_states.dtype)
-            attn_weights = F.dropout(attn_weights, p=self.attention_dropout, training=self.training)
-            attn_output = torch.matmul(attn_weights, v_states)
+            # Prefer SDPA to keep flash/memory-efficient kernels enabled in fallback path.
+            # This avoids a large regression from explicit matmul+softmax when kernel is unavailable.
+            can_use_sdpa = not output_attentions and q_states.dtype in (torch.float16, torch.bfloat16, torch.float32)
+            if can_use_sdpa and past_key_value is None and attention_mask is None:
+                attn_output = F.scaled_dot_product_attention(
+                    q_states,
+                    k_states,
+                    v_states,
+                    attn_mask=None,
+                    dropout_p=self.attention_dropout if self.training else 0.0,
+                    is_causal=True,
+                )
+                attn_weights = None
+            elif can_use_sdpa and attention_mask is not None:
+                attn_output = F.scaled_dot_product_attention(
+                    q_states,
+                    k_states,
+                    v_states,
+                    attn_mask=attention_mask,
+                    dropout_p=self.attention_dropout if self.training else 0.0,
+                    is_causal=False,
+                )
+                attn_weights = None
+            else:
+                attn_weights = torch.matmul(q_states, k_states.transpose(-1, -2)) / math.sqrt(self.head_dim)
+                if attention_mask is not None:
+                    attn_weights = attn_weights + attention_mask
+                attn_weights = F.softmax(attn_weights, dim=-1, dtype=torch.float32).to(q_states.dtype)
+                attn_weights = F.dropout(attn_weights, p=self.attention_dropout, training=self.training)
+                attn_output = torch.matmul(attn_weights, v_states)
         attn_output = attn_output.transpose(1, 2).contiguous().view(b, t, self.hidden_size)
         attn_output = self.o_proj(attn_output)
 

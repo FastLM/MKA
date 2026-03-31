@@ -25,7 +25,8 @@ class FastMKAConfig:
     dropout_p: float = 0.0
     use_cuda_kernel: bool = True
     # Fused route+KV+attention CUDA kernel (MHA only); requires no KV cache.
-    use_fused_route_cuda: bool = True
+    # Keep default off: current reference kernel is functionally correct but not yet optimized.
+    use_fused_route_cuda: bool = False
 
 
 class FastMKAAttention(nn.Module):
@@ -139,15 +140,26 @@ class FastMKAAttention(nn.Module):
         elif can_use_kernel:
             out = fastmka_attn(qh, k_tot, v_tot, causal=True)
         else:
-            scores = torch.matmul(qh, k_tot.transpose(-1, -2)) * scale  # [B,H,T,Ttot]
-            t_tot = k_tot.size(2)
-            q_pos = torch.arange(t_tot - t, t_tot, device=x.device).view(1, 1, t, 1)
-            k_pos = torch.arange(t_tot, device=x.device).view(1, 1, 1, t_tot)
-            causal = k_pos <= q_pos
-            scores = scores.masked_fill(~causal, torch.finfo(scores.dtype).min)
-            attn = torch.softmax(scores, dim=-1)
-            attn = self.dropout(attn)
-            out = torch.matmul(attn, v_tot)
+            # When no cache is involved, SDPA can dispatch to optimized kernels.
+            if kv_cache_k is None and kv_cache_v is None:
+                out = torch.nn.functional.scaled_dot_product_attention(
+                    qh,
+                    k_tot,
+                    v_tot,
+                    attn_mask=None,
+                    dropout_p=self.cfg.dropout_p if self.training else 0.0,
+                    is_causal=True,
+                )
+            else:
+                scores = torch.matmul(qh, k_tot.transpose(-1, -2)) * scale  # [B,H,T,Ttot]
+                t_tot = k_tot.size(2)
+                q_pos = torch.arange(t_tot - t, t_tot, device=x.device).view(1, 1, t, 1)
+                k_pos = torch.arange(t_tot, device=x.device).view(1, 1, 1, t_tot)
+                causal = k_pos <= q_pos
+                scores = scores.masked_fill(~causal, torch.finfo(scores.dtype).min)
+                attn = torch.softmax(scores, dim=-1)
+                attn = self.dropout(attn)
+                out = torch.matmul(attn, v_tot)
         out = self._merge_heads(out)
         out = self.wo(out)
         return out, k_tot.detach(), v_tot.detach(), lam
