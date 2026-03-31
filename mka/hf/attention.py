@@ -45,12 +45,14 @@ class HFFastMKAAttention(nn.Module):
         use_l3: bool = False,
         ema_beta: float = 0.9,
         use_cuda_kernel: bool = True,
+        prefer_sdpa: bool = True,
     ):
         super().__init__()
         self.original_attn = original_attn
         self.use_l3 = use_l3
         self.ema_beta = ema_beta
         self.use_cuda_kernel = use_cuda_kernel
+        self.prefer_sdpa = prefer_sdpa
 
         self.hidden_size = original_attn.hidden_size
         self.num_heads = original_attn.num_heads
@@ -134,13 +136,34 @@ class HFFastMKAAttention(nn.Module):
             and attention_mask is None
             and q_states.dtype in (torch.float16, torch.bfloat16, torch.float32)
         )
-        if can_use_kernel:
+        can_use_sdpa = not output_attentions and q_states.dtype in (torch.float16, torch.bfloat16, torch.float32)
+        use_sdpa_first = self.prefer_sdpa and can_use_sdpa
+        if use_sdpa_first and past_key_value is None and attention_mask is None:
+            attn_output = F.scaled_dot_product_attention(
+                q_states,
+                k_states,
+                v_states,
+                attn_mask=None,
+                dropout_p=self.attention_dropout if self.training else 0.0,
+                is_causal=True,
+            )
+            attn_weights = None
+        elif use_sdpa_first and attention_mask is not None:
+            attn_output = F.scaled_dot_product_attention(
+                q_states,
+                k_states,
+                v_states,
+                attn_mask=attention_mask,
+                dropout_p=self.attention_dropout if self.training else 0.0,
+                is_causal=False,
+            )
+            attn_weights = None
+        elif can_use_kernel:
             attn_output = fastmka_attn(q_states, k_states, v_states, causal=True)
             attn_weights = None
         else:
             # Prefer SDPA to keep flash/memory-efficient kernels enabled in fallback path.
             # This avoids a large regression from explicit matmul+softmax when kernel is unavailable.
-            can_use_sdpa = not output_attentions and q_states.dtype in (torch.float16, torch.bfloat16, torch.float32)
             if can_use_sdpa and past_key_value is None and attention_mask is None:
                 attn_output = F.scaled_dot_product_attention(
                     q_states,

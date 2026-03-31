@@ -12,4 +12,5 @@ mka_patch:
   use_l3: false
   ema_beta: 0.9
   use_cuda_kernel: true
+  prefer_sdpa: true
   verbose: true

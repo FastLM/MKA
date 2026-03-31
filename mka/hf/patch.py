@@ -15,6 +15,7 @@ class HFPatchConfig:
     use_l3: bool = False
     ema_beta: float = 0.9
     use_cuda_kernel: bool = True
+    prefer_sdpa: bool = True
     verbose: bool = True
 
 
@@ -39,7 +40,11 @@ def apply_hf_attention_patch(model: nn.Module, cfg: HFPatchConfig) -> int:
         if not required:
             continue
         layer.self_attn = HFFastMKAAttention(
-            attn, use_l3=cfg.use_l3, ema_beta=cfg.ema_beta, use_cuda_kernel=cfg.use_cuda_kernel
+            attn,
+            use_l3=cfg.use_l3,
+            ema_beta=cfg.ema_beta,
+            use_cuda_kernel=cfg.use_cuda_kernel,
+            prefer_sdpa=cfg.prefer_sdpa,
         )
         patched += 1
 
@@ -55,5 +60,6 @@ def parse_patch_config(raw: dict[str, Any]) -> HFPatchConfig:
         use_l3=bool(raw.get("use_l3", False)),
         ema_beta=float(raw.get("ema_beta", 0.9)),
         use_cuda_kernel=bool(raw.get("use_cuda_kernel", True)),
+        prefer_sdpa=bool(raw.get("prefer_sdpa", True)),
         verbose=bool(raw.get("verbose", True)),
     )

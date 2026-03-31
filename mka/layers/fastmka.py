@@ -24,6 +24,8 @@ class FastMKAConfig:
     ema_beta: float = 0.9
     dropout_p: float = 0.0
     use_cuda_kernel: bool = True
+    # Prefer PyTorch SDPA/flash backend in production.
+    prefer_sdpa: bool = True
     # Fused route+KV+attention CUDA kernel (MHA only); requires no KV cache.
     # Keep default off: current reference kernel is functionally correct but not yet optimized.
     use_fused_route_cuda: bool = False
@@ -127,7 +129,17 @@ class FastMKAAttention(nn.Module):
             and self.head_dim <= 256
             and dtype_ok
         )
-        if can_use_fused:
+        can_use_sdpa = no_kv_cache and dtype_ok and x.is_cuda and self.cfg.prefer_sdpa
+        if can_use_sdpa:
+            out = torch.nn.functional.scaled_dot_product_attention(
+                qh,
+                k_tot,
+                v_tot,
+                attn_mask=None,
+                dropout_p=self.cfg.dropout_p if self.training else 0.0,
+                is_causal=True,
+            )
+        elif can_use_fused:
             out = fused_route_mka_attn(
                 qh,
                 l1,
