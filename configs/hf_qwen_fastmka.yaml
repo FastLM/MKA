@@ -14,3 +14,16 @@ mka_patch:
   use_cuda_kernel: true
   prefer_sdpa: true
   verbose: true
+
+# Block-MKA tier mapping (paper §4.2): L1 on-chip tiles, L2 HBM, L3 DRAM chunk recall.
+# FastMKA: fused L1/L2/(L3) → single KV then attention (see Algorithm 2 in paper).
+memory_hierarchy:
+  l1_onchip_tiles: true
+  l2_hbm_tensor_path: true
+  l3_dram_chunk_recall: false
+  l3_recall_top_r: 0
+  host_dram_staging: false
+  host_dram_pinned: false
+  ssd_spill_path: null
+  measure_prefill_decode_separately: true
+  notes: "Prefill/decode: scripts/bench_inference_metrics.py; training tok/s: train_hf_patch.py. Nsight for HBM BW (paper Table 5)."

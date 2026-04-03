@@ -14,3 +14,14 @@ mka_patch:
   use_cuda_kernel: true
   prefer_sdpa: true
   verbose: true
+
+memory_hierarchy:
+  l1_onchip_tiles: true
+  l2_hbm_tensor_path: true
+  l3_dram_chunk_recall: false
+  l3_recall_top_r: 0
+  host_dram_staging: false
+  host_dram_pinned: false
+  ssd_spill_path: null
+  measure_prefill_decode_separately: true
+  notes: "Prefill/decode: bench_inference_metrics.py; training tok/s: train_hf_patch.py."

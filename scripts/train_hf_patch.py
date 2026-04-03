@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from mka.config import parse_memory_hierarchy, summarize_for_log, warn_if_incomplete_tiers
 from mka.cuda.ops import has_fastmka_cuda, has_fused_route_mka_cuda
 from mka.hf import apply_hf_attention_patch, parse_patch_config
 from mka.utils.repro import set_global_seed
@@ -83,6 +84,8 @@ def main():
     with open(args.config, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
+    mem_h = parse_memory_hierarchy(cfg.get("memory_hierarchy"))
+
     seed = int(cfg.get("seed", 42))
     set_global_seed(seed)
 
@@ -136,6 +139,10 @@ def main():
             "| fused_route_mka_cuda available:",
             has_fused_route_mka_cuda(),
         )
+        print(summarize_for_log(mem_h))
+        wh = warn_if_incomplete_tiers(mem_h)
+        if wh:
+            print(f"warning: {wh}")
         print(f"[repro] seed={seed} warmup_steps={warmup_steps} deterministic={bool(cfg.get('deterministic', False))}")
         print(
             "[metrics] train_throughput_tok_s uses wall time after warmup only (if warmup_steps>0); "
