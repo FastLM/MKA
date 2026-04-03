@@ -6,13 +6,13 @@ The main idea include:
 - `MKA` (3-path hierarchical memory attention)
 - `FastMKA` (route-fused variant for speed)
 - CUDA extensions for fused routing + online softmax
-- Reproducible training/evaluation scripts following the paper setup
+- Reproducible training/evaluation scripts
 
 Our code repo include follwing:
 - `mka/layers/`: PyTorch modules (`MKAFullAttention`, `FastMKAAttention`)
 - `mka/hf/`: HuggingFace monkey patch support (Qwen/Llama style `self_attn`)
 - `mka/cuda/`: CUDA extensions (`fastmka_attn`, optional `fused_route_mka`)
-- `mka/config/`: optional YAML fields (e.g. `memory_hierarchy` for paper-aligned tier notes)
+- `mka/config/`: optional YAML fields for `memory_hierarchy` etc.
 - `mka/utils/repro.py`: global RNG seeding for reproducible runs
 - `scripts/`: train/eval/benchmark entry points
 - `configs/`: experiment configs
@@ -105,17 +105,17 @@ Notes:
 - `train_hf_patch.py`: logs `train_mean_loss`, `train_total_elapsed_s`, `train_throughput_tok_s` (post-warmup), `peak_gpu_memory_gb`, optional `--eval-ppl` for validation PPL.
 - `bench_inference_metrics.py`: `prefill_tok_s`, `decode_tok_s`, per-phase peak GPU memory, `kv_cache_bytes_*` from `past_key_values`. HBM bandwidth is not available from PyTorch alone; use Nsight / `nvidia-smi dmon` on the host.
 
-### Memory hierarchy (paper Block-MKA + FastMKA)
+### Memory hierarchy (Block-MKA + FastMKA)
 
-The paper’s **Block-MKA** (§4.2) maps memory to compute tiers: **L1** on-chip SRAM (tiled attention, online softmax with running max and partition sum); **L2** HBM (activations, Q/K/V, fused KV cache); **L3** DRAM (vectorized hash, chunk recall). **FastMKA** (Algorithm 2) **route-fuses** L1/L2/(L3) into one hidden representation, then **one** KV projection and **one** causal attention — the dominant data path is **fused activations → KV on HBM → attention** (paper Tables 4–6).
+**Block-MKA** (§4.2) maps memory to compute tiers: **L1** on-chip SRAM (tiled attention, online softmax with running max and partition sum); **L2** HBM (activations, Q/K/V, fused KV cache); **L3** DRAM (vectorized hash, chunk recall). **FastMKA** (Algorithm 2) **route-fuses** L1/L2/(L3) into one hidden representation, then **one** KV projection and **one** causal attention — the dominant data path is **fused activations → KV on HBM → attention** (see detials in our paper Tables 4–6).
 
 YAML `memory_hierarchy` records these tiers for reproducibility (`mka/config/memory_hierarchy.py`). Older keys (`hbm_enabled`, `dram_staging`, `ssd_tier_path`) still parse as aliases.
 
-**Scripts vs paper metrics**
+**Scripts vs metrics**
 
-- Training: `train_hf_patch.py` — tokens/s includes backward + optimizer (paper also reports training throughput with routing overhead; match `batch`, `seq_len`, flash/SDPA).
+- Training: `train_hf_patch.py` — tokens/s includes backward + optimizer
 - Inference-style: `bench_inference_metrics.py` — prefill vs decode, KV bytes, per-phase GPU peak memory.
-- HBM bandwidth (paper Table 5): use **Nsight Compute** / vendor tools, not PyTorch alone.
+- HBM bandwidth: use **Nsight Compute** / vendor tools, not PyTorch alone.
 
 **References for implementation quality**
 
@@ -125,7 +125,7 @@ YAML `memory_hierarchy` records these tiers for reproducibility (`mka/config/mem
 
 ## Evaluation
 
-The paper reports LongBench and RULER.
+For evaluation of LongBench and RULER.
 Use:
 
 - `scripts/run_longbench.sh` for LongBench workflow
