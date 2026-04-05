@@ -1,7 +1,5 @@
 """
-Memory hierarchy and data paths aligned with MKA / Block-MKA (CF '26).
-
-Paper mapping (§4.2 Block-MKA, Fig. 2):
+Memory hierarchy and data paths for MKA / Block-MKA, this code is corresponds to the paper's (§4.2 Block-MKA, Fig. 2):
   • L1 — On-chip SRAM: tiled block attention, online softmax / m,z updates
     (FlashAttention-style scan); realized by SDPA/flash or custom CUDA kernels.
   • L2 — HBM: intermediate activations, Q/K/V, routed (fused) KV cache, softmax stats.
